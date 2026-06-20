@@ -1,133 +1,174 @@
-# AlterMe
+# AlterMe 🎭
 
-App utilitário focado na criação de avatares gerados por Inteligência Artificial. A ideia é que você possa transformar suas próprias fotos em personagens de diferentes mundos e estilos.
+App mobile que transforma sua selfie em um alter ego gerado por Inteligência Artificial. Você escolhe um universo — Anime, Medieval, Sci-Fi ou Político BR — e a IA redesenha seu rosto naquele estilo, preservando suas características físicas reais.
 
-O Gerador de Alter Ego é o motor principal do app. Ele recebe uma selfie enviada pelo usuário junto de um tema (o "universo" da criação, como Fantasia, Cyberpunk, etc.). O backend envia isso para um modelo de visão e geração via IA que analisa seu rosto e cria uma imagem totalmente nova.
+Desenvolvido como **Atividade Ponderada 4** do curso de Engenharia de Software do Inteli.
 
-A aplicação roda em Flutter com backend FastAPI que gerencia e cria os alter egos gerados a partir das selfies. O projeto hoje roda com **Flutter + FastAPI + MySQL + MinIO**, substituindo a stack antiga baseada em Supabase.
+---
 
 ## Demonstração
 
+> 📹 *Vídeo de demonstração disponível em `assets/demo.mp4`*
 <video src="assets/demo.mp4" controls="controls" width="100%"></video>
+
+### Sobre os alter egos gerados...
+
+Os resultados são gerados pelo **[FLUX.1-Kontext-Dev](https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev)** via [Pollinations.ai](https://pollinations.ai) — um modelo open source gratuito. Sendo completamente honesto as imagens geradas pelo modelo ficaram muito feias. Se tivesse usando um google nano banana, com certeza teria resultados 100x mais satisfatórios.
+
+---
 
 ## Funcionalidades
 
-- autenticação com login e cadastro;
-- captura e envio de selfie;
-- geração de alter ego por universo;
-- upload de imagens no MinIO;
-- persistência de dados no MySQL.
+- Cadastro e login com autenticação JWT
+- Upload de selfie direto da galeria
+- Seleção de universo temático (Anime, Medieval, Sci-Fi, Político BR)
+- Geração de alter ego por IA preservando características físicas do rosto
+- Visualização lado a lado: foto original vs. alter ego gerado
+- Galeria pessoal com todas as criações
+- Exclusão de alter egos
+- Compartilhamento da imagem gerada
+
+---
 
 ## Stack
 
-- Flutter
-- BLoC
-- go_router
-- get_it
-- Dio
-- FastAPI
-- aiomysql
-- boto3
-- MySQL
-- MinIO
+### Frontend
+| Tecnologia | Uso |
+|---|---|
+| Flutter | Framework mobile/web |
+| BLoC | Gerenciamento de estado |
+| go_router | Navegação |
+| get_it | Injeção de dependência |
+| Dio | Cliente HTTP |
+| cached_network_image | Cache de imagens |
 
-## Estrutura do projeto
+### Backend
+| Tecnologia | Uso |
+|---|---|
+| FastAPI | API REST |
+| aiomysql | Acesso async ao MySQL |
+| boto3 | Storage S3-compatible (MinIO) |
+| python-jose | JWT |
+| bcrypt | Hash de senhas |
+| Pollinations.ai | Geração de imagens (gratuito) |
 
-- `lib/`: app Flutter.
-- `lib/core/`: auth, DI, rotas e rede.
-- `lib/features/`: features por domínio da interface.
-- `backend/app/`: API FastAPI.
-- `backend/app/handlers/`: rotas HTTP.
-- `backend/app/domain/`: casos de uso e contratos.
-- `backend/app/repositories/`: acesso ao MySQL.
-- `backend/app/services/`: geração, prompt e visão.
-- `backend/tests/`: testes do backend.
+### Infraestrutura
+| Tecnologia | Uso |
+|---|---|
+| MySQL 8.0 | Banco de dados relacional |
+| MinIO | Storage de imagens (S3-compatible) |
+| Docker | Orquestração local |
 
-## Pré-requisitos
+---
 
-- Flutter instalado.
-- Docker Desktop em execução.
-- Python 3.11+ se for rodar o backend fora do Docker.
+## Arquitetura
+
+```
+ponderada-app-flutter/
+├── lib/
+│   ├── core/
+│   │   ├── auth/          # Serviço de autenticação JWT
+│   │   ├── di/            # Injeção de dependência (get_it)
+│   │   ├── network/       # Cliente HTTP (Dio + interceptors)
+│   │   └── router/        # Rotas (go_router)
+│   └── features/
+│       ├── auth/          # Login e cadastro
+│       ├── alter_ego/     # Câmera, geração e resultado
+│       └── feed/          # Galeria de criações
+└── backend/
+    ├── app/
+    │   ├── handlers/      # Rotas HTTP (FastAPI)
+    │   ├── domain/        # Casos de uso e contratos
+    │   ├── repositories/  # Acesso ao MySQL
+    │   └── services/      # Geração, prompt e visão
+    ├── schema.sql          # DDL do banco
+    └── tests/             # Testes unitários
+```
+
+---
 
 ## Como rodar
 
-### Opção 1: subir tudo com Docker
+### Pré-requisitos
 
-No Windows, rode:
+- [Flutter](https://flutter.dev/docs/get-started/install) instalado
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) em execução
+- Python 3.11+
 
-```powershell
-./start.ps1
-```
-
-Isso sobe MySQL, MinIO e o backend. Quando terminar, o script mostra os endereços úteis:
-
-- API: `http://localhost:8000`
-- documentação: `http://localhost:8000/docs`
-- MinIO Console: `http://localhost:9001`
-
-Comandos úteis:
+### 1. Subir a infraestrutura (MySQL + MinIO)
 
 ```powershell
-./start.ps1 -Logs
-./start.ps1 -Rebuild
-./start.ps1 -Down
+docker-compose up -d mysql minio
 ```
 
-### Opção 2: rodar o Flutter separado
+Aguarde os containers ficarem saudáveis (uns 20 segundos).
 
-Instale dependências e execute o app:
-
-```bash
-flutter pub get
-flutter run
-```
-
-Para testes:
-
-```bash
-flutter test
-```
-
-### Opção 3: rodar o backend separado
-
-Entre na pasta do backend e instale as dependências:
+### 2. Rodar o backend
 
 ```bash
 cd backend
 pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-Depois rode a API:
+A API sobe em `http://localhost:8080`. Documentação interativa: `http://localhost:8080/docs`
+
+### 3. Rodar o frontend
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+flutter pub get
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080
 ```
 
-Para testes do backend:
+Para rodar em dispositivo físico, substitua o `API_BASE_URL` pelo IP da sua máquina na rede local.
+
+### Testes do backend
 
 ```bash
 cd backend
 python -m pytest tests -q
 ```
 
+---
+
 ## Variáveis de ambiente
 
-O backend lê as configurações de `backend/.env` e, no Docker, também usa `backend/.env.docker`.
+O backend lê de `backend/.env`. Crie o arquivo com:
 
-Variáveis esperadas:
+```env
+MYSQL_URL=mysql+aiomysql://root:password@localhost:3306/alterme
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_PUBLIC_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=alter-egos
+JWT_SECRET=troque-por-uma-string-longa-e-aleatoria
+JWT_EXPIRE_MINUTES=10080
+HF_API_TOKEN=          # necessário apenas como fallback; Pollinations.ai não precisa de token
+```
 
-- `MYSQL_URL`
-- `MINIO_ENDPOINT`
-- `MINIO_PUBLIC_ENDPOINT`
-- `MINIO_ACCESS_KEY`
-- `MINIO_SECRET_KEY`
-- `MINIO_BUCKET`
-- `JWT_SECRET`
-- `JWT_EXPIRE_MINUTES`
-- `HF_API_TOKEN`
+Para rodar com Docker, use `backend/.env.docker` com os hostnames internos (`mysql`, `minio`).
 
-## Banco e storage
+---
 
-- O esquema do MySQL fica em `backend/schema.sql`.
-- O MinIO é usado para armazenar os arquivos de imagem.
-- O backend expõe os routers em `backend/app/main.py` e organiza a lógica por camada.
+## Endpoints principais
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/auth/register` | Cadastro |
+| `POST` | `/auth/login` | Login |
+| `POST` | `/upload/selfie` | Upload da selfie |
+| `POST` | `/alter-ego/generate` | Gerar alter ego |
+| `DELETE` | `/alter-ego/{id}` | Excluir alter ego |
+| `GET` | `/feed` | Listar criações do usuário |
+
+---
+
+## Fluxo de geração
+
+```
+Selfie → Upload MinIO → VisionService (extrai tom de pele e expressão)
+       → PromptService (monta prompt com características físicas)
+       → Pollinations.ai FLUX (gera imagem preservando o rosto)
+       → Armazena no MinIO → Retorna URL pública
+```
