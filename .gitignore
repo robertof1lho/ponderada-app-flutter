@@ -167,6 +167,9 @@ venv.bak/
 # mkdocs documentation
 /site
 
+.claude/
+docs/superpowers/
+
 # mypy
 .mypy_cache/
 .dmypy.json
