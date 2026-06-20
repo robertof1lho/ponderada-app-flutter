@@ -1,29 +1,36 @@
 from fastapi import APIRouter, Depends
-from app.domain.usecases.get_feed_usecase import GetFeedUseCase
-from app.core.config import settings
+from app.middleware.auth import verify_jwt_token
 
 router = APIRouter()
-
-
-def _make_feed_usecase() -> GetFeedUseCase:
-    from supabase import create_client
-    from neo4j import AsyncGraphDatabase
-    from app.repositories.alter_ego_pg_repository import AlterEgoPgRepository
-    from app.repositories.feed_repository import FeedRepository
-
-    pg_client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    driver = AsyncGraphDatabase.driver(
-        settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password)
-    )
-    pg_repo = AlterEgoPgRepository(client=pg_client)
-    feed_repo = FeedRepository(pg_repo=pg_repo, driver=driver)
-    return GetFeedUseCase(feed_repository=feed_repo)
 
 
 @router.get("")
 async def get_feed(
     limit: int = 20,
     offset: int = 0,
-    usecase: GetFeedUseCase = Depends(_make_feed_usecase),
+    claims: dict = Depends(verify_jwt_token),
 ):
-    return await usecase.execute(limit=limit, offset=offset)
+    from app.core.db import get_pool
+    import aiomysql
+
+    user_id = claims["sub"]
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            await cur.execute(
+                "SELECT id, image_url, universe, created_at "
+                "FROM alter_egos WHERE user_id = %s "
+                "ORDER BY created_at DESC LIMIT %s OFFSET %s",
+                (user_id, limit, offset),
+            )
+            rows = await cur.fetchall()
+
+    return [
+        {
+            "id": r["id"],
+            "image_url": r["image_url"],
+            "universe": r["universe"],
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+        }
+        for r in rows
+    ]

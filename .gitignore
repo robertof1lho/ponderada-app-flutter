@@ -168,7 +168,7 @@ venv.bak/
 /site
 
 .claude/
-docs/superpowers/
+.superpowers/
 
 # mypy
 .mypy_cache/

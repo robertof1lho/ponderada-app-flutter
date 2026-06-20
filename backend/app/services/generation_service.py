@@ -1,41 +1,68 @@
-import asyncio
+import uuid
+import urllib.parse
 import httpx
 from app.core.errors import GenerationError
 
-REPLICATE_API_URL = "https://api.replicate.com/v1/predictions"
-MODEL_VERSION = "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b"
+POLLINATIONS_URL = "https://image.pollinations.ai/prompt/{prompt}"
+
 
 class GenerationService:
-    def __init__(self, api_token: str):
-        self._token = api_token
+    def __init__(self, api_token: str = ""):
+        pass  # no token needed for Pollinations
 
-    async def generate(self, prompt: str) -> str:
-        headers = {
-            "Authorization": f"Token {self._token}",
-            "Content-Type": "application/json",
+    async def generate(self, prompt: str, negative_prompt: str = "", selfie_url: str = "") -> str:
+        encoded_prompt = urllib.parse.quote(prompt)
+        params = {
+            "model": "flux-anime",
+            "width": 768,
+            "height": 768,
+            "nologo": "true",
+            "seed": str(uuid.uuid4().int % 2**31),
         }
-        payload = {
-            "version": MODEL_VERSION,
-            "input": {"prompt": prompt, "width": 768, "height": 768},
-        }
-        async with httpx.AsyncClient() as client:
-            response = await client.post(REPLICATE_API_URL, json=payload, headers=headers)
 
-        if response.status_code not in (200, 201):
-            raise GenerationError(f"Replicate API error: {response.text}")
+        if selfie_url:
+            validated = self._validate_selfie_url(selfie_url)
+            if validated:
+                params["image"] = validated
 
-        prediction = response.json()
-        return await self._poll_until_done(prediction["id"], headers)
+        url = POLLINATIONS_URL.format(prompt=encoded_prompt)
 
-    async def _poll_until_done(self, prediction_id: str, headers: dict) -> str:
-        url = f"{REPLICATE_API_URL}/{prediction_id}"
-        async with httpx.AsyncClient() as client:
-            for _ in range(30):
-                response = await client.get(url, headers=headers)
-                data = response.json()
-                if data["status"] == "succeeded":
-                    return data["output"][0]
-                if data["status"] == "failed":
-                    raise GenerationError("Image generation failed")
-                await asyncio.sleep(2)
-        raise GenerationError("Generation timed out")
+        async with httpx.AsyncClient(timeout=90, follow_redirects=True) as client:
+            response = await client.get(url, params=params)
+
+        if response.status_code != 200:
+            raise GenerationError(f"Pollinations error {response.status_code}")
+
+        content_type = response.headers.get("content-type", "image/jpeg")
+        ext = ".png" if "png" in content_type else ".jpg"
+        return self._store_image(response.content, ext=ext)
+
+    def _validate_selfie_url(self, selfie_url: str) -> str | None:
+        from urllib.parse import urlparse
+        from app.core.config import settings
+
+        parsed = urlparse(selfie_url)
+        if parsed.scheme not in ("http", "https"):
+            return None
+        allowed = {urlparse(settings.minio_public_endpoint or "").netloc,
+                   urlparse(settings.minio_endpoint).netloc}
+        allowed.discard("")
+        if parsed.netloc not in allowed:
+            return None
+        # Pollinations needs a publicly accessible URL — use public endpoint
+        return selfie_url
+
+    def _store_image(self, image_bytes: bytes, ext: str = ".jpg") -> str:
+        from app.core.storage import get_storage_client
+        from app.core.config import settings
+
+        client = get_storage_client()
+        path = f"generated/{uuid.uuid4()}{ext}"
+        content_type = "image/png" if ext == ".png" else "image/jpeg"
+        client.put_object(
+            Bucket=settings.minio_bucket,
+            Key=path,
+            Body=image_bytes,
+            ContentType=content_type,
+        )
+        return f"{settings.public_endpoint}/{settings.minio_bucket}/{path}"

@@ -7,8 +7,6 @@ class GenerateAlterEgoRequest(BaseModel):
     universe: str
     # user_id removed — derived from JWT claims
 
-class LikeRequest(BaseModel):
-    pass  # user_id removed — derived from JWT claims
 
 class AlterEgoResponse(BaseModel):
     id: str

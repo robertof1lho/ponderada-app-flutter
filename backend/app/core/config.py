@@ -2,15 +2,21 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    supabase_url: str
-    supabase_service_role_key: str
-    supabase_jwt_secret: str
-    neo4j_uri: str
-    neo4j_user: str
-    neo4j_password: str
+    mysql_url: str
+    minio_endpoint: str
+    minio_public_endpoint: str = ""   # URL acessível pelo browser; defaults to minio_endpoint
+    minio_access_key: str
+    minio_secret_key: str
+    minio_bucket: str = "alter-egos"
+    jwt_secret: str
+    jwt_expire_minutes: int = 60
     hf_api_token: str
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @property
+    def public_endpoint(self) -> str:
+        return self.minio_public_endpoint or self.minio_endpoint
 
 
 settings = Settings()

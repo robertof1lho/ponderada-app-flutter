@@ -1,26 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.domain.usecases.get_similar_users_usecase import GetSimilarUsersUseCase
-from app.middleware.auth import verify_supabase_token
-from app.core.config import settings
+from app.middleware.auth import verify_jwt_token
 
 router = APIRouter()
 
-def _make_similar_users_usecase() -> GetSimilarUsersUseCase:
-    from supabase import create_client
-    from neo4j import AsyncGraphDatabase
-    from app.repositories.user_graph_repository import UserGraphRepository
-    pg_client = create_client(settings.supabase_url, settings.supabase_service_role_key)
-    driver = AsyncGraphDatabase.driver(
-        settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password)
-    )
-    graph_repo = UserGraphRepository(driver=driver)
-    return GetSimilarUsersUseCase(user_repository=graph_repo)
+
+async def _make_similar_users_usecase() -> GetSimilarUsersUseCase:
+    from app.core.db import get_pool
+    from app.repositories.user_mysql_repository import UserMysqlRepository
+    return GetSimilarUsersUseCase(user_repository=UserMysqlRepository(pool=await get_pool()))
+
 
 @router.get("/{user_id}/similar")
 async def get_similar_users(
     user_id: str,
     limit: int = 10,
-    claims: dict = Depends(verify_supabase_token),
+    claims: dict = Depends(verify_jwt_token),
     usecase: GetSimilarUsersUseCase = Depends(_make_similar_users_usecase),
 ):
     if claims["sub"] != user_id:
