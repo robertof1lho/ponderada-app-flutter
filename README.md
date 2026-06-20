@@ -8,8 +8,9 @@ Desenvolvido como **Atividade Ponderada 4** do curso de Engenharia de Software d
 
 ## Demonstração
 
-> 📹 *Vídeo de demonstração disponível em `assets/demo.mp4`*
-<video src="assets/demo.mp4" controls="controls" width="100%"></video>
+<video src="https://github.com/robertof1lho/ponderada-app-flutter/raw/main/assets/demo.mp4" controls="controls" width="100%"></video>
+
+> Caso o vídeo não carregue, [clique aqui para baixar](https://github.com/robertof1lho/ponderada-app-flutter/raw/main/assets/demo.mp4)
 
 ### Sobre os alter egos gerados...
 
