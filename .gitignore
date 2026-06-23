@@ -14,7 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ ignorado para Python, mas o diretório Flutter lib/ deve ser rastreado
+# lib/
 lib64/
 parts/
 sdist/
