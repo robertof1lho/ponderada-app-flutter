@@ -2,8 +2,6 @@
 
 App mobile que transforma sua selfie em um alter ego gerado por Inteligência Artificial. Você escolhe um universo — Anime, Medieval, Sci-Fi ou Político BR — e a IA redesenha seu rosto naquele estilo, preservando suas características físicas reais.
 
-Desenvolvido como **Atividade Ponderada 4** do curso de Engenharia de Software do Inteli.
-
 ---
 
 ## Demonstração
@@ -18,13 +16,35 @@ Os resultados são gerados pelo **[FLUX.1-Kontext-Dev](https://huggingface.co/bl
 
 ---
 
+## Checklist de entrega
+
+| # | Requisito | Implementação |
+|---|-----------|---------------|
+| 1 | Aplicação mobile (Flutter) | Flutter + BLoC, roda em Android, iOS e web |
+| 2 | Mais de duas telas | 6 telas: Login, Feed, Seleção de universo, Gerando, Resultado |
+| 3 | Navegação funcional | `go_router` com rotas protegidas por JWT (`lib/core/router/`) |
+| 4 | Backend integrado | FastAPI em `backend/`, comunicação via Dio com interceptor JWT |
+| 5 | Banco de dados | MySQL 8.0 via `aiomysql` — schema em `backend/schema.sql` |
+| 6 | API externa | [Pollinations.ai](https://pollinations.ai) para geração de imagens com IA (FLUX) |
+| 7 | Compartilhamento | `share_plus` na tela de resultado — compartilha a URL da imagem gerada |
+| 8 | Notificações | `flutter_local_notifications` ao concluir geração (nativo); SnackBar no web |
+| 9 | Recurso de hardware | Câmera do dispositivo via `image_picker` (ImageSource.camera) + dialog webcam no Chrome |
+| 10 | Interface coerente | Material Design 3, layout side-by-side, AspectRatio adaptativo para mobile |
+| 11 | Tratamento de erros | BLoC error states, SnackBars amigáveis, 401 interceptor, mensagens em PT-BR |
+| 12 | Documentação | Este README com proposta, stack, arquitetura, endpoints e instruções |
+| 13 | Vídeo de demonstração | Vídeo inline acima + `assets/demo.mp4` |
+| 14 | Repositório organizado | [github.com/robertof1lho/ponderada-app-flutter](https://github.com/robertof1lho/ponderada-app-flutter) |
+
+---
+
 ## Funcionalidades
 
 - Cadastro e login com autenticação JWT
-- Upload de selfie direto da galeria
+- Upload de selfie da galeria ou câmera do dispositivo
 - Seleção de universo temático (Anime, Medieval, Sci-Fi, Político BR)
 - Geração de alter ego por IA preservando características físicas do rosto
 - Visualização lado a lado: foto original vs. alter ego gerado
+- Notificação ao concluir a geração
 - Galeria pessoal com todas as criações
 - Exclusão de alter egos
 - Compartilhamento da imagem gerada
@@ -42,6 +62,9 @@ Os resultados são gerados pelo **[FLUX.1-Kontext-Dev](https://huggingface.co/bl
 | get_it | Injeção de dependência |
 | Dio | Cliente HTTP |
 | cached_network_image | Cache de imagens |
+| share_plus | Compartilhamento nativo |
+| flutter_local_notifications | Notificações locais |
+| image_picker | Acesso à câmera e galeria |
 
 ### Backend
 | Tecnologia | Uso |
@@ -51,7 +74,7 @@ Os resultados são gerados pelo **[FLUX.1-Kontext-Dev](https://huggingface.co/bl
 | boto3 | Storage S3-compatible (MinIO) |
 | python-jose | JWT |
 | bcrypt | Hash de senhas |
-| Pollinations.ai | Geração de imagens (gratuito) |
+| Pollinations.ai | Geração de imagens (gratuito, sem API key) |
 
 ### Infraestrutura
 | Tecnologia | Uso |
@@ -70,6 +93,7 @@ ponderada-app-flutter/
 │   ├── core/
 │   │   ├── auth/          # Serviço de autenticação JWT
 │   │   ├── di/            # Injeção de dependência (get_it)
+│   │   ├── errors/        # Tratamento de erros amigável
 │   │   ├── network/       # Cliente HTTP (Dio + interceptors)
 │   │   └── router/        # Rotas (go_router)
 │   └── features/
@@ -85,6 +109,19 @@ ponderada-app-flutter/
     ├── schema.sql          # DDL do banco
     └── tests/             # Testes unitários
 ```
+
+---
+
+## Telas da aplicação
+
+| Tela | Descrição |
+|---|---|
+| Login | Autenticação com e-mail e senha |
+| Cadastro | Criação de conta nova |
+| Feed | Galeria pessoal com todas as criações do usuário |
+| Seleção de universo | Escolha do estilo: Anime, Medieval, Sci-Fi, Político BR |
+| Gerando | Exibe selfie original enquanto a IA processa (com shimmer) |
+| Resultado | Comparação lado a lado + botões de compartilhar e excluir |
 
 ---
 
@@ -172,4 +209,5 @@ Selfie → Upload MinIO → VisionService (extrai tom de pele e expressão)
        → PromptService (monta prompt com características físicas)
        → Pollinations.ai FLUX (gera imagem preservando o rosto)
        → Armazena no MinIO → Retorna URL pública
+       → Notificação local disparada → Tela de resultado
 ```
